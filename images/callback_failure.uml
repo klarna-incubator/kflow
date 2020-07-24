@@ -1,0 +1,50 @@
+@startuml
+
+participant "kfnode N-1\n(upstream)" as upstream
+participant "kfnode N" as kfnode
+participant "kfnode N+1\n(downstream)" as downstream
+
+activate kfnode
+activate upstream
+activate downstream
+
+hnote over kfnode : ready
+upstream -> kfnode : ?feed(Ref1, Msg1)
+
+group Process message from the upstream
+  hnote over kfnode : working
+  kfnode --> worker ** : spawn_link
+  activate worker
+  worker -\ worker : Module:handle_upstream_message(Msg1)
+  kfnode <- worker : ?done(nok)
+  destroy worker
+end
+
+hnote over kfnode : exiting
+
+kfnode -> upstream : ?downstream_failure
+upstream -\ upstream : handle_downstream_failure
+destroy upstream
+
+group Feed messages to the downstream
+  note over kfnode
+    Suppose we had Msg1 and
+    Msg2 already in the queue
+  end note
+
+  kfnode -> downstream : ?feed(Ref1, Msg1)
+  downstream -\ downstream : Handle message from the upstream
+  kfnode <- downstream : ?ack(Ref1)
+
+  kfnode -> downstream : ?feed(Ref2, Msg2)
+  downstream -\ downstream : Handle message from the upstream
+  kfnode <- downstream : ?ack(Ref2)
+end
+
+kfnode -> downstream : ?upstream_failure
+destroy kfnode
+
+downstream -\ downstream : Handle upstream failure
+destroy downstream
+
+@enduml

@@ -1,0 +1,247 @@
+%%%===================================================================
+%%% @copyright 2020 Klarna Bank AB (publ)
+%%%
+%%% @doc `kflow_loopback_consumer' is a source type that receives data
+%%% as Erlang messages. Its primary purpose is to glue together
+%%% different pipes. (Think named pipes in Unix)
+%%%
+%%% == Error handling ==
+%%%
+%%% Processes interacting with the loopback consumer are linked to the
+%%%
+%%% @end
+%%%===================================================================
+-module(kflow_loopback_consumer).
+
+-include("kflow_int.hrl").
+
+%% API
+-export([ start_link/1
+        , stop/1
+        , feed/1
+        , feed/2
+        ]).
+
+-export_type([config/0]).
+
+%%%===================================================================
+%%% Types
+%%%===================================================================
+
+-type config() ::
+        #{ id               := atom()
+         , pipe_spec        := kflow:pipe()
+                             | fun((kflow:node_spec()) -> kflow:pipe())
+         , feed_timeout     => timeout()
+         , shutdown_timeout => timeout()
+         , idle_timeout     => non_neg_integer() | undefined
+         }.
+
+-record(worker,
+        { pid        :: pid()
+        , entrypoint :: kflow_pipe:entrypoint()
+        , id         :: kflow:node_id()
+        }).
+
+-type workers() :: #{brod:partition() => #worker{}}.
+
+-record(state,
+        { config                :: kflow:pipe_config()
+        , group_id              :: brod:group_id()
+        , workers = #{}         :: workers()
+        }).
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+-spec feed(atom(), non_neg_integer()) ->
+feed(Id, Partition) ->
+
+
+-spec start_link(config()) -> {ok, pid()}.
+start_link(Config = #{ id       := Id
+                     , group_id := GroupId
+                     , topics   := Topics
+                     }) ->
+  declare_metrics(),
+  kflow_lib:ensure_log(Id),
+  ClientId = maps:get(brod_client_id, Config, ?default_brod_client),
+  brod_group_subscriber:start_link( ClientId
+                                  , GroupId
+                                  , Topics
+                                  , _GroupConfig = []
+                                  , consumer_config(Config)
+                                  , _DeliveryType = message_set
+                                  , ?MODULE
+                                  , Config
+                                  ).
+
+-spec stop(pid()) -> ok.
+stop(Pid) ->
+  brod_group_subscriber:stop(Pid).
+
+%%%===================================================================
+%%% brod_group_subscriber callbacks
+%%%===================================================================
+
+init(GroupId, Config) ->
+  #{id := Id} = Config,
+  ?set_process_metadata(#{domain => kflow_lib:root_node_id(Id)}),
+  PipeConfig = init_data(Config),
+  {ok, #state{ config   = PipeConfig
+             , group_id = GroupId
+             }}.
+
+handle_message(Topic, Partition, MessageSet, State0) ->
+  #kafka_message_set{ messages       = Messages
+                    , high_wm_offset = HighWmOffset
+                    , topic          = Topic
+                    } = MessageSet,
+  #kafka_message{offset = BaseOffset} = hd(Messages),
+  prometheus_gauge:set( <<"kflow_kafka_offset_high_wm">>
+                      , [Topic, Partition]
+                      , HighWmOffset
+                      ),
+  State = maybe_spawn_worker(Topic, Partition, State0),
+  ok = dispatch_to_partition_worker(Partition, MessageSet, State),
+  {ok, ack_no_commit, State}.
+
+%%%===================================================================
+%%% Internal functions
+%%%===================================================================
+
+-spec dispatch_to_partition_worker( brod:partition()
+                                  , brod:message_set()
+                                  , #state{}
+                                  ) -> ok.
+dispatch_to_partition_worker(Partition, MessageSet, #state{workers = Workers}) ->
+  #worker{ entrypoint = Entrypoint
+         , id         = Id0
+         } = maps:get(Partition, Workers),
+  Id = kflow_lib:pretty_print_node_id(Id0),
+  #kafka_message_set{ messages  = Messages
+                    , topic     = Topic
+                    , partition = Partition
+                    } = MessageSet,
+  Route = [{Topic, Partition}],
+  lists:foreach( fun(#kafka_message{ offset  = Offset
+                                   , key     = Key
+                                   , value   = Value
+                                   , headers = Headers
+                                   , ts      = Ts
+                                   }) ->
+                     Payload = #{ key       => Key
+                                , ts        => Ts
+                                , value     => Value
+                                , headers   => Headers
+                                , partition => Partition
+                                },
+                     Msg = #kflow_msg{ offset  = Offset
+                                     , route   = Route
+                                     , payload = Payload
+                                     },
+                     prometheus_gauge:set( <<"kflow_kafka_offset_in">>
+                                         , [Topic, Partition]
+                                         , Offset
+                                         ),
+                     TBefore = erlang:monotonic_time(millisecond),
+                     ok = Entrypoint(Msg),
+                     TAfter = erlang:monotonic_time(millisecond),
+                     prometheus_histogram:observe( <<"kflow_kafka_consume_time">>
+                                                 , [Id]
+                                                 , TAfter - TBefore
+                                                 )
+                 end
+               , Messages
+               ),
+  ok.
+
+-spec maybe_spawn_worker(brod:topic(), brod:partition(), #state{}) -> #state{}.
+maybe_spawn_worker(Topic, Partition, State = #state{workers = Workers}) ->
+  case maps:get(Partition, Workers, false) of
+    #worker{} ->
+      State;
+    false ->
+      #state{ group_id = GroupId
+            , config   = PipeConfig
+            } = State,
+      Worker = spawn_worker(GroupId, Topic, Partition, PipeConfig),
+      State#state{workers = Workers#{Partition => Worker}}
+  end.
+
+-spec spawn_worker(brod:group_id(), brod:topic(), brod:partition(), map()) ->
+                      #worker{}.
+spawn_worker(GroupId, Topic, Partition, Config) ->
+  #{ pipe_spec := PipeSpec0
+   , id        := ParentId
+   } = Config,
+  Id = ParentId ++ [list_to_atom(integer_to_list(Partition))],
+  CommitterNode = committer_node(self(), Topic, Partition, GroupId),
+  PipeConfig0 = maps:with([feed_timeout, shutdown_timeout, idle_timeout], Config),
+  PipeSpec = case maps:get(auto_commit, Config, true) of
+               true ->
+                 %% Commit offsets of fully processed messages:
+                 PipeSpec0 ++ [CommitterNode];
+               false when is_function(PipeSpec0, 1) ->
+                 %% Let user insert OffsetCommitNode in any place:
+                 PipeSpec0(CommitterNode);
+               false ->
+                 %% Offsets are not committed at all:
+                 PipeSpec0
+             end,
+  PipeConfig = PipeConfig0 #{ definition => PipeSpec
+                            , id         => Id
+                            },
+  {ok, Pid, Entrypoint} = kflow_pipe:start_link(PipeConfig),
+  ?tp(kflow_consumer_start, #{ topic     => Topic
+                             , partition => Partition
+                             , id        => Id
+                             , pid       => Pid
+                             }),
+  #worker{pid = Pid, entrypoint = Entrypoint, id = Id}.
+
+%% Create a kfnode that will commit kafka offsets:
+-spec committer_node(pid(), brod:topic(), brod:partition(), brod:group_id()) ->
+                        kflow:node_spec().
+committer_node(ParentPid, Topic, Partition, GroupId) ->
+  CommitFun = fun(Offset) ->
+                  ok = brod_group_subscriber:commit( ParentPid
+                                                   , Topic
+                                                   , Partition
+                                                   , Offset
+                                                   )
+              end,
+  NodeConfig = #{ topic      => Topic
+                , partition  => Partition
+                , group_id   => GroupId
+                , commit_fun => CommitFun
+                },
+  {kflow_kafka_commit, undefined, NodeConfig}.
+
+-spec init_data(config()) -> kflow_pipe:config().
+init_data(Config = #{id := Id}) ->
+  %% Construct callback module config:
+  NodeId = kflow_lib:root_node_id(Id),
+  InitDataFields = [pipe_spec, auto_commit, feed_timeout, shutdown_timeout, idle_timeout],
+  InitData0 = maps:with(InitDataFields, Config),
+  InitData0 #{id => NodeId}.
+
+-spec consumer_config(config()) -> brod:consumer_config().
+consumer_config(Config) ->
+  ConsumerConfig = lists:keysort(1, maps:get(consumer_config, Config, [])),
+  DefaultConsumerConfig = [{begin_offset, earliest}],
+  lists:ukeymerge(1, ConsumerConfig, DefaultConsumerConfig).
+
+-spec declare_metrics() -> ok.
+declare_metrics() ->
+  prometheus_gauge:declare([ {name, <<"kflow_loopback_offset_in">>}
+                           , {help, "Offset of the last message that went into the pipe"}
+                           , {labels, [topic, partition]}
+                           ]),
+  prometheus_histogram:declare([ {name, <<"kflow_loopback_consume_time">>}
+                               , {help, "Time spent pushing messages into the pipe"}
+                               , {labels, [id]}
+                               , {buckets, [100, 1000, 10000]}
+                               ]),
+  ok.

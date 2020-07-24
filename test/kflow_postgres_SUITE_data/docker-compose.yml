@@ -1,0 +1,27 @@
+version: "3.4"
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.57.0/24
+services:
+  db_host:
+    image: postgres:11
+    volumes:
+      - ./schema_sysmon_table.sql:/docker-entrypoint-initdb.d/schema_sysmon_table.sql
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: 123
+      PGDATA: /tmp/postgres
+
+  kafka_host:
+    image: docker.artifactory.klarna.net/kafka/kafka:2.2.1
+    ports:
+      - 9094:9094
+      - 9093:9093
+      - 9092:9092
+      - 8081:8081
+    environment:
+      KAFKA_CREATE_TOPICS: systom_monitor,foo,bar:5

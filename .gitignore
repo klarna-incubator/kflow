@@ -1,0 +1,4 @@
+doc/*
+!doc/overview.edoc
+_build
+_checkouts

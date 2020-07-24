@@ -1,0 +1,40 @@
+{application, kflow,
+ [ {description, "Fault-tolerant dataflow DSL"}
+ , {vsn, "git"}
+ , {registered, [kflow_sup2, kflow_pipe_sup]}
+ , {applications, [kernel, stdlib, compiler, supervisor3, brod, prometheus, cowboy,
+                   jsone]}
+ , {modules, []}
+ , {mod, {kflow_app, []}}
+ , {licenses, ["Apache 2.0"]}
+ , {links, []}
+ , {env, [ {pipe_log_level, notice}
+         , {pipe_log_levels, #{}}
+         , {pipe_log_formatter, {logger_formatter,
+                                 #{ depth       => 300
+                                  , single_line => false
+                                  }}}
+         , {log_dir, "/var/log/kflow/"}
+         , {config_module_dir, "/etc/kflow.d/"}
+           %% {Module, Function, ArgList} | undefined
+         , {pipes, {kflow_config, pipes, []}}
+           %% Default Kafka configuration:
+         , {kafka_endpoints, []}
+         , {kafka_request_timeout, 60000}
+         , {kafka_ssl, true}
+         , {kafka_sasl, true}
+         , {kafka_sasl_file, "/etc/kflow.d/kafka.sasl"}
+           %% Kafka clients with optional configuration overrides:
+         , {kafka_clients, #{kflow_default_client => #{}}}
+           %% Monitoring parameters:
+         , {healthcheck_listener, [ {port, 8080}
+                                  , {ip, {127,0,0,1}}
+                                  ]}
+         , {healthcheck_tls, false}
+           %% Common AWS S3 options:
+         , {s3_options,
+            [{acl, bucket_owner_full_control}]}
+         , {s3_headers,
+            [{"x-amz-server-side-encryption", "AES256"}]}
+         ]}
+ ]}.
