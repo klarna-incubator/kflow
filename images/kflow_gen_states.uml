@@ -1,0 +1,27 @@
+@startuml
+
+
+[*] --> initial
+
+initial --> ready : ?post_init
+
+ready --> working : ?feed
+ready --> ready : ?ack
+
+working --> ready : ?done(ok)
+working --> blocked : ?done(ok)
+working --> working : ?ack
+
+blocked --> blocked : ?ack
+blocked --> ready : ?ack
+
+ready --> working : ?flush
+
+ready -down-> exiting : ?upstream_failure
+
+exiting --> exiting : ?ack
+working --> exiting : ?done(nok)
+
+exiting --> [*]
+
+@enduml

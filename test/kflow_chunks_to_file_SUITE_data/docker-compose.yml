@@ -1,0 +1,46 @@
+version: "3.3"
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.57.0/24
+
+services:
+  kafka_host_ctf:
+    image: docker.artifactory.klarna.net/kafka/kafka:2.2.1
+    ports:
+      - 9094:9094
+      - 9093:9093
+      - 9092:9092
+      - 8081:8081
+
+  minio:
+    image: minio/minio
+    ports:
+      - 9000:9000
+    environment:
+      - "MINIO_ACCESS_KEY=alice"
+      - "MINIO_SECRET_KEY=12345678"
+    volumes:
+      - "${LOCATION}:/export"
+    command: server /export
+
+  # This ensures that "bucket1" and "bucket2" always exist in the S3
+  # test environment:
+  createbuckets:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      while true; do
+        /usr/bin/mc config host add myminio http://minio:9000 alice 12345678 && break;
+        sleep 1;
+      done;
+      /usr/bin/mc mb myminio/bucket1;
+      /usr/bin/mc policy public myminio/bucket1;
+      /usr/bin/mc mb myminio/bucket2;
+      /usr/bin/mc policy public myminio/bucket2;
+      exit 0
+      "

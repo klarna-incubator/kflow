@@ -1,0 +1,58 @@
+@startuml
+
+participant "kfnode N-1\n(upstream)" as upstream
+participant "kfnode N" as kfnode
+participant "kfnode N+1\n(downstream)" as downstream
+
+activate kfnode
+activate upstream
+activate downstream
+
+hnote over kfnode : ready
+upstream -> kfnode : ?upsteam_failure
+destroy upstream
+
+group Process ?upstream_failure message
+  hnote over kfnode : exiting
+
+  group Flush state of the callback module
+    kfnode --> worker ** : spawn_link
+    activate worker
+    worker -\ worker : Module:handle_flush()
+    kfnode <- worker : ?done({ok, [Msg2], _})
+    destroy worker
+  end
+
+  note over kfnode
+    Suppose we had Msg1
+    already in the queue
+    and now flush callback
+    produced one more.
+    Both messages should
+    be fed downstream
+  end note
+
+  group Feed the remaining messages to downstream
+    kfnode -> downstream : ?feed(Ref1, Msg1)
+    downstream -\ downstream : Handle message from the upstream
+    kfnode <- downstream : ?ack(Ref1)
+
+    kfnode -> downstream : ?feed(Ref2, Msg2)
+    downstream -\ downstream : Handle message from the upstream
+    kfnode <- downstream : ?ack(Ref2)
+  end
+
+  note over kfnode
+    Now when we don't have
+    any pending data we
+    can finally exit
+  end note
+end
+
+kfnode -> downstream : ?upstream_failure
+destroy kfnode
+
+downstream -\ downstream : Process ?upstream_failure message
+destroy downstream
+
+@enduml

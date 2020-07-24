@@ -1,0 +1,56 @@
+@startuml
+
+participant "kfnode N-1\n(upstream)" as upstream
+participant "kfnode N" as kfnode
+participant "kfnode N+1\n(downstream)" as downstream
+
+activate kfnode
+activate upstream
+activate downstream
+
+hnote over kfnode : ready
+upstream -> kfnode : ?feed(Ref1, Msg1)
+
+group Process message from the upstream
+  hnote over kfnode : working
+  kfnode --> worker ** : spawn_link
+  activate worker
+  worker -\ worker : Module:handle_upstream_message(Msg1)
+  kfnode <- worker : ?done({ok, [Msg2, Msg3], NewCbState})
+  destroy worker
+end
+
+kfnode -> upstream : ?ack(Ref1)
+
+note over kfnode
+  Note that the callback returned
+  2 messages (Msg2 and Msg3) that
+  should be fed downstream. This node
+  will engage backpressure while its
+  downstream is processing all but
+  last message. Hence entering
+  blocked state:
+end note
+
+hnote over kfnode : blocked
+group Feed messages to the downstream
+  kfnode -> downstream : ?feed(Ref2, Msg2)
+  downstream -\ downstream : Handle message from the upstream
+  kfnode <- downstream : ?ack(Ref2)
+
+  note over kfnode
+    Now we have only one message to
+    feed downstream (Msg3), so can
+    afford to process another
+    message from the upstream in
+    parallel. Hence entering
+    ready state:
+  end note
+
+  hnote over kfnode : ready
+  kfnode -> downstream : ?feed(Ref3, Msg3)
+  downstream -\ downstream : Handle message from the upstream
+  kfnode <- downstream : ?ack(Ref3)
+end
+
+@enduml

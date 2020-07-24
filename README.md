@@ -1,46 +1,78 @@
-# Project Name
-> Short blurb about what your project does.
+# KFlow
+> Bullet-proof data stream processing framework
 
 [![Build Status][ci-image]][ci-url]
 [![License][license-image]][license-url]
 [![Developed at Klarna][klarna-image]][klarna-url]
 
+KFlow is an Erlang dataflow DSL built with Kafka in mind. Services
+implemented using Kflow have the following properties:
 
-One to two paragraph statement about your project and what it does.
+ 1. Stateless. Service can be restarted at any moment without risk of
+    losing data
+ 1. Fault-tolerant and self-healing. Any crashes in the service can be
+    fixed, and the service will automatically replay the data that
+    caused crash, once the fix is deployed. This enables fearless A/B
+    testing and canary deployments
+ 1. Scalable.
+ 1. Automated parallelization. Each transformation runs in parallel
+ 1. Automated backpressure.
 
-## First steps
+This is achieved by rather sophisticated offset tracking logic built
+in KFlow behaviors, that makes sure that consumer offsets are
+committed to Kafka only when an input message is fully processed.
 
-<details>
- <summary>Installation (for Admins)</summary>
-  
-  Currently, new repositories can be created only by a Klarna Open Source community lead. Please reach out to us if you need assistance.
-  
-  1. Create a new repository by clicking ‘Use this template’ button.
-  
-  2. Make sure your newly created repository is private.
-  
-  3. Enable Dependabot alerts in your candidate repo settings under Security & analysis. You need to enable ‘Allow GitHub to perform read-only analysis of this repository’ first.
-</details>
-
-1. Update `README.md` and `CHANGELOG.md`.
-
-2. Optionally, change `.github/CONTRIBUTING.md`.
-
-3. Do *not* edit `LICENSE`, `.github/CODE_OF_CONDUCT.md`, and `.github/SECURITY.md`.
+Another feature of KFlow is "virtual partition" that allows to split
+Kafka partitions into however many substream that are processed
+independently.
 
 ## Usage example
 
-A few motivating and useful examples of how your project can be used. Spice this up with code blocks and potentially more screenshots.
+KFlow is configured using a special Erlang module named
+`kflow_config.erl`. Every exported function in this module defines a
+workflow. For example:
+
+```
+-module(kflow_config).
+
+-export([example_workflow/0]).
+
+example_workflow() ->
+  %% Define a "pipe" (much like Unix pipe):
+  PipeSpec = [ %% Parse messages:
+               {map, fun(_Offset, #{key => KafkaKey, value => JSON} ->
+                         (jsone:decode(JSON)) #{key => KafkaKey}
+                     end}
+               %% Create a "virtual partition" for each unique key:
+             , {demux, fun(_Offset, #{key := Key}) ->
+                           Key
+                       end}
+               %% Collect messages into chunks of 100 for faster processing:
+             , {aggregate, kflow_buffer, #{max_messages => 100}}
+               %% Dump chunks into Postgres:
+             , {map, kflow_postgres, #{ database => #{ host => "localhost"
+                                                     , ...
+                                                     }
+                                      , table  => "my_table"
+                                      , fields => [key, foo, bar, baz]
+                                      , keys   => [key]
+                                      }}
+             ],
+  kflow:mk_kafka_workflow(?FUNCTION_NAME, PipeSpec,
+                          #{ kafka_topic => <<"example_topic">>
+                           , group_id    => <<"example_consumer_group_id">>
+                           }).
+```
 
 _For more examples and usage, please refer to the [Docs](TODO)._
 
 ## Development setup
 
-Describe how to install all development dependencies and how to run an automated test-suite of some kind. Potentially do this for multiple platforms.
+KFlow requires OTP21 or later and `rebar3` present in the
+`PATH`. Build by running
 
 ```sh
-make install
-npm test
+make
 ```
 
 ## How to contribute
