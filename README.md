@@ -32,7 +32,7 @@ KFlow is configured using a special Erlang module named
 `kflow_config.erl`. Every exported function in this module defines a
 workflow. For example:
 
-```
+```erlang
 -module(kflow_config).
 
 -export([example_workflow/0]).
