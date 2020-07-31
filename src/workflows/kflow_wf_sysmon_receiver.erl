@@ -61,7 +61,10 @@
 %% @doc Create a workflow specification
 -spec workflow(atom(), config()) -> kflow:workflow().
 workflow(Id, Config) ->
-  kflow:mk_kafka_workflow(Id, pipe_spec(Config), Config).
+  Config1 = Config#{ auto_commit    => false
+                   , flush_interval => 1000
+                   },
+  kflow:mk_kafka_workflow(Id, pipe_spec(Config), Config1).
 
 %%%===================================================================
 %%% Field transform functions copied from Seqializer
