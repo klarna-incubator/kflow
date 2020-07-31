@@ -1,19 +1,3 @@
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'latin-1';
-SET standard_conforming_strings = on;
-SET check_function_bodies = false;
-SET client_min_messages = warning;
-SET row_security = off;
-
-SET search_path = public, pg_catalog;
-SET default_tablespace = '';
-SET default_with_oids = false;
-
-create role kflow with login password '123';
-create role grafana with login password '123';
-
 -----------------------------------------------------------------------------------
 -- prc table
 -----------------------------------------------------------------------------------
@@ -95,18 +79,31 @@ grant select on table node_role to grafana;
 
 create index node_role_ts_idx on node_role(ts);
 
+
 -----------------------------------------------------------------------------------
--- upserts test table
+-- node table
 -----------------------------------------------------------------------------------
 
-create table upserts_test (
-    foo text not null,
-    bar text,
-    primary key(foo)
+create table node (
+    node text not null primary key
 );
 
-alter table upserts_test owner to postgres;
-grant delete on table upserts_test to kflow;
-grant select on table upserts_test to kflow;
-grant insert on table upserts_test to kflow;
-grant select on table upserts_test to grafana;
+alter table node owner to kflow;
+grant select on table node to kflow;
+grant insert on table node to kflow;
+grant select on table node to grafana;
+
+create or replace function update_nodes()
+   returns trigger
+   language plpgsql as
+$$
+begin
+  insert into node(node) values (NEW.node) on conflict do nothing;
+  return null;
+end;
+$$;
+
+create trigger update_nodes_trigger
+       after insert on node_role
+       for each row
+       execute procedure update_nodes();

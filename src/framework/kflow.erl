@@ -93,7 +93,7 @@ mk_kafka_workflow(Id, PipeSpec, Config) ->
    , group_id       := GroupId
    } = Config,
   Client = maps:get(kafka_client, Config, ?default_brod_client),
-  Args = (maps:with([feed_timeout, shutdown_timeout, flush_interval], Config))
+  Args = (maps:with([feed_timeout, shutdown_timeout, flush_interval, auto_commit], Config))
            #{ group_id        => GroupId
             , topics          => [Topic]
             , id              => Id

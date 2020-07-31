@@ -1,0 +1,375 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 2,
+  "iteration": 1596181197809,
+  "links": [],
+  "panels": [
+    {
+      "columns": [],
+      "datasource": "Postgres",
+      "fontSize": "180%",
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 6,
+      "links": [],
+      "options": {},
+      "pageSize": 3,
+      "scroll": false,
+      "showHeader": true,
+      "sort": {
+        "col": null,
+        "desc": false
+      },
+      "styles": [
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "preserveFormat": true,
+          "sanitize": true,
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "alias": "",
+          "format": "table",
+          "rawSql": "BEGIN;\nWITH data as\n(SELECT (data::json)->>'site_type' as site_type,\n        (data::json)->>'node_mode' as mode,\n        (data::json)->>'node_status' as health,\n        (data::json)->>'force' as force\n FROM node_role WHERE node='[[node]]'\n  AND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom()))\n\nSELECT\nunnest(ARRAY[\n       CASE WHEN site_type='standard' AND mode='master' THEN\n              '<mark>std <font color=#ff0>master</font></mark>'\n            WHEN site_type='standard' AND mode='slave' THEN\n              '<mark>std slave</mark>'\n            WHEN site_type='buy' THEN\n              '<font color=#0ff><b>buy</b></font>'\n            ELSE\n              site_type || ' ' || mode\n       END,\n       CASE WHEN health='in_sync' THEN\n              '<font color=#0f0>in_sync</font>'\n            WHEN health='leader' THEN\n              '<font color=#ff0>leader</font>'\n            ELSE\n              '<font color=#f00><b>' || health || '</b></font>'\n       END,\n       CASE WHEN force='false' THEN\n              '<font color=#0f0>forced=false</font>'\n            ELSE\n              '<mark><font color=#ff0><b> forced ' || force || '</b></font></mark>'\n       END\n       ]) as status\nFROM data\nCOMMIT;",
+          "refId": "A"
+        }
+      ],
+      "title": "",
+      "transform": "table",
+      "type": "table"
+    },
+    {
+      "columns": [],
+      "datasource": "Postgres",
+      "fontSize": "100%",
+      "gridPos": {
+        "h": 24,
+        "w": 24,
+        "x": 0,
+        "y": 7
+      },
+      "hideTimeOverride": true,
+      "id": 2,
+      "links": [],
+      "maxPerRow": 2,
+      "options": {},
+      "pageSize": null,
+      "repeat": "node",
+      "repeatDirection": "v",
+      "scopedVars": {
+        "node": {
+          "selected": true,
+          "text": "",
+          "value": ""
+        }
+      },
+      "scroll": true,
+      "showHeader": true,
+      "sort": {
+        "col": 4,
+        "desc": true
+      },
+      "styles": [
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": true,
+          "linkTooltip": "Process history",
+          "linkUrl": "",
+          "pattern": "dreductions",
+          "thresholds": [
+            "1000000",
+            "100000000"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(5, 5, 5, 0)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 0,
+          "pattern": "message_queue_len",
+          "thresholds": [
+            "10",
+            "100"
+          ],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0.97)",
+            "rgba(237, 129, 40, 0)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "pattern": "dmemory",
+          "thresholds": [
+            "-1000000",
+            "100000000"
+          ],
+          "type": "number",
+          "unit": "Bps"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "link": true,
+          "linkTargetBlank": true,
+          "linkTooltip": "history",
+          "linkUrl": "/d/P2OSAsRmz/process-history?orgId=1&var-node=[[node]]&var-pid=${__cell:raw}&var-regname=undefined&from=$__from&to=$__to",
+          "pattern": "pid",
+          "preserveFormat": false,
+          "sanitize": false,
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Current function                                      ",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "pattern": "current_function",
+          "preserveFormat": true,
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "Initial call                                  ",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "pattern": "initial_call",
+          "preserveFormat": true,
+          "thresholds": [],
+          "type": "string",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": "cell",
+          "colors": [
+            "rgba(50, 172, 45, 0)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(245, 54, 54, 0.9)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "pattern": "memory",
+          "thresholds": [
+            "100000000",
+            "10000000000"
+          ],
+          "type": "number",
+          "unit": "decbytes"
+        },
+        {
+          "alias": "Registered name                                                     ",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "dateFormat": "YYYY-MM-DD HH:mm:ss",
+          "decimals": 2,
+          "pattern": "registered_name",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        },
+        {
+          "alias": "",
+          "align": "auto",
+          "colorMode": null,
+          "colors": [
+            "rgba(245, 54, 54, 0.9)",
+            "rgba(237, 129, 40, 0.89)",
+            "rgba(50, 172, 45, 0.97)"
+          ],
+          "decimals": 2,
+          "pattern": "/.*/",
+          "thresholds": [],
+          "type": "number",
+          "unit": "short"
+        }
+      ],
+      "targets": [
+        {
+          "alias": "",
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "BEGIN;\nSELECT pid, registered_name, reductions, dreductions, message_queue_len, memory, dmemory, stack_size, heap_size, total_heap_size, initial_call, current_function\nFROM prc\nWHERE node='[[node]]'\nAND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom() AND ts < $__timeTo());\nCOMMIT;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": "10s",
+      "timeShift": "1s",
+      "title": "Top [[node]]",
+      "transform": "table",
+      "transparent": true,
+      "type": "table"
+    }
+  ],
+  "refresh": "2s",
+  "schemaVersion": 22,
+  "style": "dark",
+  "tags": [
+    "erlang",
+    "top"
+  ],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "datasource": "Postgres",
+        "definition": "SELECT DISTINCT node FROM node ORDER BY node ASC;",
+        "hide": 0,
+        "includeAll": false,
+        "label": null,
+        "multi": false,
+        "name": "node",
+        "options": [],
+        "query": "SELECT DISTINCT node FROM node ORDER BY node ASC;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "now-15m",
+    "to": "now-2s"
+  },
+  "timepicker": {
+    "nowDelay": "2s",
+    "refresh_intervals": [
+      "1s",
+      "2s",
+      "5s",
+      "10s",
+      ""
+    ],
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ]
+  },
+  "timezone": "",
+  "title": "Erlang top",
+  "uid": "V5HktsRik",
+  "version": 6
+}

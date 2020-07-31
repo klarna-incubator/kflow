@@ -29,13 +29,15 @@ independently.
 ## Usage example
 
 KFlow is configured using a special Erlang module named
-`kflow_config.erl`. Every exported function in this module defines a
-workflow. For example:
+`kflow_config.erl`. This module must export `pipes/0` function
+returning a list of workflows. For example:
 
 ```erlang
 -module(kflow_config).
 
--export([example_workflow/0]).
+-export([pipes/0]).
+
+pipes() -> [example_workflow()].
 
 example_workflow() ->
   %% Define a "pipe" (much like Unix pipe):
@@ -64,7 +66,7 @@ example_workflow() ->
                            }).
 ```
 
-_For more examples and usage, please refer to the [Docs](TODO)._
+_For more examples and usage, please refer to the [Docs](https://hexdocs.pm/kflow/)._
 
 ## Development setup
 
