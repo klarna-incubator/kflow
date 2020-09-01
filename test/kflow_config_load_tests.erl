@@ -5,6 +5,7 @@
 load_config_test() ->
   application:load(kflow),
   Dir = filename:join(code:lib_dir(kflow), "test/pipe_config"),
+  io:format(user, "Kflow config dir: ~p", [Dir]),
   application:set_env(kflow, config_module_dir, Dir),
   %% Don't start any brod processes:
   application:set_env(kflow, kafka_clients, #{}),
