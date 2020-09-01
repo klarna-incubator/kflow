@@ -18,8 +18,8 @@ jobs:
       run: |
         deb=esl-erlang_${{ matrix.otp-version }}~ubuntu~bionic_amd64.deb
         wget https://packages.erlang-solutions.com/erlang/debian/pool/${deb}
-        sudo apt install ./${deb}
-        sudo apt install pwgen wget docker docker-compose
+        sudo apt-get install --allow-downgrades --no-install-recommends ./${deb}
+        sudo apt-get install --no-install-recommends pwgen wget docker docker-compose
         wget https://github.com/erlang/rebar3/releases/download/3.14.0/rebar3
         chmod +x rebar3
         sudo mv rebar3 /usr/local/bin/rebar3
