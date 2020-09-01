@@ -1,4 +1,4 @@
-PICS=$(patsubst %.uml,%.png,$(wildcard images/*.uml))
+PICS=$(patsubst %.uml,%.png,$(wildcard doc/images/*.uml))
 
 ENV_FILE=.env
 
@@ -25,7 +25,7 @@ clean:
 doc: $(PICS)
 	rebar3 edoc
 
-images/%.png: images/%.uml
+doc/images/%.png: doc/images/%.uml
 	plantuml $<
 
 .PHONY: run

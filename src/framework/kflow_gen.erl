@@ -29,7 +29,7 @@
 %%% "user callback modules".
 %%%
 %%% == State transition diagram ==
-%%% <img src="../images/kflow_gen_states.png"></img>
+%%% <img src="images/kflow_gen_states.png"></img>
 %%%
 %%% == Message sequence diagrams ==
 %%% === Handle message from the upstream ===
@@ -61,15 +61,15 @@
 %%%
 %%% </ol>
 %%%
-%%% <img src="../images/message_from_upstream.png"></img>
+%%% <img src="images/message_from_upstream.png"></img>
 %%%
 %%% === Callback module failure ===
 %%%
-%%% <img src="../images/callback_failure.png"></img>
+%%% <img src="images/callback_failure.png"></img>
 %%%
 %%% === Handle upstream failure ===
 %%%
-%%% <img src="../images/upstream_failure.png"></img>
+%%% <img src="images/upstream_failure.png"></img>
 %%%
 %%% === Handle downstream failure ===
 %%%
