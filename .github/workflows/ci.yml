@@ -26,4 +26,4 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Compile
-      run: make all
+      run: sudo make all
