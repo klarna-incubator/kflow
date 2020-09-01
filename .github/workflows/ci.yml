@@ -23,6 +23,7 @@ jobs:
         wget https://github.com/erlang/rebar3/releases/download/3.14.0/rebar3
         chmod +x rebar3
         sudo mv rebar3 /usr/local/bin/rebar3
+        sudo systemctl start docker
     - name: Checkout
       uses: actions/checkout@v2
     - name: Compile
