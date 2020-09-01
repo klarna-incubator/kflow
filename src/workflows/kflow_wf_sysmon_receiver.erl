@@ -49,9 +49,11 @@
 %%%===================================================================
 
 -type config() ::
-        #{ kafka_topic := brod:topic()
-         , group_id    := binary()
-         , database    := epgsql:connect_opts()
+        #{ kafka_topic    := brod:topic()
+         , group_id       := binary()
+         , database       := epgsql:connect_opts()
+         , retention      => non_neg_integer()
+         , partition_days => non_neg_integer()
          }.
 
 %%%===================================================================
@@ -127,7 +129,7 @@ format_stacktrace(Stacktrace) ->
 %%%===================================================================
 
 -spec pipe_spec(config()) -> kflow:pipe().
-pipe_spec(#{database := DbOpts}) ->
+pipe_spec(Config = #{database := DbOpts}) ->
   [ {mfd, fun parse_sysmon_message/2}
   , {aggregate, kflow_buffer, #{}}
   , {route_dependent,
@@ -138,9 +140,14 @@ pipe_spec(#{database := DbOpts}) ->
                      {A, _}    -> A;
                      A         -> A
                    end || I <- Fields0],
-         MapConfig = #{ database => DbOpts
-                      , table    => Table
-                      , fields   => Fields
+         MapConfig = #{ database     => DbOpts
+                      , table        => Table
+                      , fields       => Fields
+                      , partitioning =>
+                          #{ days         => maps:get(partition_days, Config, 1)
+                           , retention    => maps:get(retention, Config, 30)
+                           , index_fields => [ts]
+                           }
                       },
          {map, kflow_postgres, MapConfig}
      end}

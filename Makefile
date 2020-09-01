@@ -51,3 +51,6 @@ $(CONCUERROR):
 	@mkdir -p $(BUILD_DIR)
 	cd _build && git clone https://github.com/parapluu/Concuerror.git
 	$(MAKE) -C _build/Concuerror/
+
+hex-publish: clean
+	rebar3 hex publish

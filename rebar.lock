@@ -1,5 +1,6 @@
 {"1.1.0",
 [{<<"base16">>,{pkg,<<"base16">>,<<"1.0.0">>},1},
+ {<<"bbmustache">>,{pkg,<<"bbmustache">>,<<"1.10.0">>},0},
  {<<"bear">>,{pkg,<<"bear">>,<<"0.8.7">>},1},
  {<<"brod">>,{pkg,<<"brod">>,<<"3.14.0">>},0},
  {<<"cowboy">>,{pkg,<<"cowboy">>,<<"2.7.0">>},0},
@@ -22,6 +23,7 @@
 [
 {pkg_hash,[
  {<<"base16">>, <<"283644E2B21BD5915ACB7178BED7851FB07C6E5749B8FAD68A53C501092176D9">>},
+ {<<"bbmustache">>, <<"DDC927463F0E95D66CDAC889153AF08015D609124D6D79006C248AD2DE7F6ECD">>},
  {<<"bear">>, <<"16264309AE5D005D03718A5C82641FCC259C9E8F09ADEB6FD79CA4271168656F">>},
  {<<"brod">>, <<"F959408E88ACD0FECA22F6A43CA26E70201C6E5C57DC74B87F08EF65A5E7FE18">>},
  {<<"cowboy">>, <<"91ED100138A764355F43316B1D23D7FF6BDB0DE4EA618CB5D8677C93A7A2F115">>},
