@@ -15,13 +15,103 @@
   "editable": true,
   "gnetId": null,
   "graphTooltip": 0,
-  "id": 2,
-  "iteration": 1596181197809,
+  "id": 3,
+  "iteration": 1596220898345,
   "links": [],
   "panels": [
     {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 7,
+        "w": 20,
+        "x": 0,
+        "y": 0
+      },
+      "hiddenSeries": false,
+      "id": 8,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.1",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Time series",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
       "columns": [],
       "datasource": "Postgres",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fontSize": "180%",
       "gridPos": {
         "h": 7,
@@ -31,7 +121,6 @@
       },
       "id": 6,
       "links": [],
-      "options": {},
       "pageSize": 3,
       "scroll": false,
       "showHeader": true,
@@ -62,17 +151,44 @@
         {
           "alias": "",
           "format": "table",
-          "rawSql": "BEGIN;\nWITH data as\n(SELECT (data::json)->>'site_type' as site_type,\n        (data::json)->>'node_mode' as mode,\n        (data::json)->>'node_status' as health,\n        (data::json)->>'force' as force\n FROM node_role WHERE node='[[node]]'\n  AND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom()))\n\nSELECT\nunnest(ARRAY[\n       CASE WHEN site_type='standard' AND mode='master' THEN\n              '<mark>std <font color=#ff0>master</font></mark>'\n            WHEN site_type='standard' AND mode='slave' THEN\n              '<mark>std slave</mark>'\n            WHEN site_type='buy' THEN\n              '<font color=#0ff><b>buy</b></font>'\n            ELSE\n              site_type || ' ' || mode\n       END,\n       CASE WHEN health='in_sync' THEN\n              '<font color=#0f0>in_sync</font>'\n            WHEN health='leader' THEN\n              '<font color=#ff0>leader</font>'\n            ELSE\n              '<font color=#f00><b>' || health || '</b></font>'\n       END,\n       CASE WHEN force='false' THEN\n              '<font color=#0f0>forced=false</font>'\n            ELSE\n              '<mark><font color=#ff0><b> forced ' || force || '</b></font></mark>'\n       END\n       ]) as status\nFROM data\nCOMMIT;",
-          "refId": "A"
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT data as status \n FROM node_role WHERE node='[[node]]'\n  AND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom());",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
         }
       ],
       "title": "",
       "transform": "table",
-      "type": "table"
+      "type": "table-old"
     },
     {
       "columns": [],
       "datasource": "Postgres",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fontSize": "100%",
       "gridPos": {
         "h": 24,
@@ -276,7 +392,7 @@
           "group": [],
           "metricColumn": "none",
           "rawQuery": true,
-          "rawSql": "BEGIN;\nSELECT pid, registered_name, reductions, dreductions, message_queue_len, memory, dmemory, stack_size, heap_size, total_heap_size, initial_call, current_function\nFROM prc\nWHERE node='[[node]]'\nAND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom() AND ts < $__timeTo());\nCOMMIT;",
+          "rawSql": "SELECT pid, registered_name, reductions, dreductions, message_queue_len, memory, dmemory, stack_size, heap_size, total_heap_size, initial_call, current_function\nFROM prc\nWHERE node='[[node]]'\nAND ts=(SELECT max(ts) FROM node_role WHERE node='[[node]]' AND ts > $__timeFrom() AND ts < $__timeTo());",
           "refId": "A",
           "select": [
             [

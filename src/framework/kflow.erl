@@ -13,6 +13,7 @@
 -export([ mk_kafka_workflow/3
         , kafka_client_settings/1
         , kafka_client_settings/0
+        , status/0
         ]).
 
 -export_type([ message/0
@@ -85,6 +86,12 @@
 %%====================================================================
 %% API functions
 %%====================================================================
+
+%% @doc Get high-level health status. TODO: put something useful here
+-spec status() -> string().
+status() ->
+  "kflow<br/>"
+  "<font color=#0f0>UP</font></br>".
 
 %% @doc Helper function for creating standard Kafka workflows
 -spec mk_kafka_workflow(atom(), pipe(), kafka_config()) -> workflow().

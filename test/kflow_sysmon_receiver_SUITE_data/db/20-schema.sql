@@ -19,7 +19,7 @@ create table prc (
     total_heap_size bigint,
     current_stacktrace text,
     group_leader text
-);
+) partition by range(ts);
 
 alter table prc owner to kflow;
 grant insert on table prc to kflow;
@@ -37,7 +37,7 @@ create table app_top (
     application text,
     unit app_top_unit,
     value numeric
-);
+) partition by range(ts);
 
 alter table app_top owner to kflow;
 grant insert on table app_top to kflow;
@@ -55,7 +55,7 @@ create table fun_top (
     fun text,
     fun_type fun_type,
     num_processes numeric
-);
+) partition by range(ts);
 
 alter table fun_top owner to kflow;
 grant insert on table fun_top to kflow;
@@ -69,7 +69,7 @@ create table node_role (
     node text not null,
     ts timestamp without time zone not null,
     data text
-);
+) partition by range(ts);
 
 alter table node_role owner to kflow;
 grant delete on table node_role to kflow;
@@ -78,7 +78,6 @@ grant insert on table node_role to kflow;
 grant select on table node_role to grafana;
 
 create index node_role_ts_idx on node_role(ts);
-
 
 -----------------------------------------------------------------------------------
 -- node table

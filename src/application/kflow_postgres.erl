@@ -70,6 +70,12 @@
 
 -export_type([config/0]).
 
+%% API:
+-export([ensure_partitions/1]).
+
+%% Debug:
+-export([mk_partition_statement/1, mk_statement/1]).
+
 %%%===================================================================
 %%% Types
 %%%===================================================================
@@ -84,14 +90,52 @@
         , fields        :: [field()]
         }).
 
+-type part_config() ::
+        #{ days          := non_neg_integer()
+         , retention     := non_neg_integer()
+         , index_fields  => [field()]
+         , n_part_ahead  => non_neg_integer()
+         , n_part_behind => non_neg_integer()
+         }.
+
 -type config() ::
-   #{ database         := epgsql:connect_opts()
-    , init_count       => non_neg_integer()
-    , fields           := [field()]
-    , keys             => [field()]
-    , table            := list() | binary()
-    , field_mappings   => field_mappings()
-    }.
+        #{ database         := epgsql:connect_opts()
+         , init_count       => non_neg_integer()
+         , fields           := [field()]
+         , keys             => [field()]
+         , table            := list() | binary()
+         , field_mappings   => field_mappings()
+         , partitioning     => part_config()
+         }.
+
+%%%===================================================================
+%%% API
+%%%===================================================================
+
+-spec ensure_partitions(config()) -> ok.
+ensure_partitions(Config = #{partitioning := _, table := Table}) ->
+  Req = mk_partition_statement(Config),
+  ?log(notice, "Preparing for partition rotation. Request: ~s", [Req]),
+  {ok, Conn} = epgsql:connect(epgsql_config(Config)),
+  Result = epgsql:squery(Conn, Req),
+  epgsql:close(Conn),
+  case Result of
+    {error, Err} ->
+      ?slog(alert,
+            #{ what  => "Partition rotation failure"
+             , table => Table
+             , error => Err
+             });
+    Ret ->
+      ?slog(notice,
+            #{ what   => "Partition rotation success"
+             , table  => Table
+             , result => Ret
+             })
+  end,
+  ok;
+ensure_partitions(_) ->
+  ok.
 
 %%%===================================================================
 %%% kflow_gen_map callbacks
@@ -99,6 +143,8 @@
 
 %% @private
 init(Config = #{fields := Fields}) ->
+  %% Ensure table partitions if needed:
+  ok = ensure_partitions(Config),
   {ok, Conn} = epgsql:connect(epgsql_config(Config)),
   Statement = mk_statement(Config),
   kflow_lib:redirect_logs(Conn),
@@ -217,3 +263,57 @@ field_to_sql(Atom) when is_atom(Atom) ->
 field_to_sql(String) ->
   true = io_lib:printable_list(String),
   String.
+
+%% @private Create an SQL statement for table partitions
+mk_partition_statement(#{partitioning := PartConf, table := Table}) ->
+  Defaults = #{ n_part_ahead  => 3
+              , n_part_behind => 3
+              , index_fields  => []
+              },
+  #{ days          := Days
+   , retention     := Retention
+   , n_part_ahead  := Ahead0
+   , n_part_behind := Behind0
+   , index_fields  := Indices0
+   } = maps:merge(Defaults, PartConf),
+  Indices = [#{"field" => field_to_sql(I)} || I <- Indices0],
+  Ahead = Ahead0 * Days,
+  Behind = Behind0 * Days,
+  GDate = calendar:date_to_gregorian_days(date()) div Days * Days,
+  DeleteDays = lists:seq(GDate - Retention - Behind, GDate - Retention, Days),
+  EnsureDays = lists:seq(GDate, GDate + Ahead, Days),
+  bbmustache:render(part_template(),
+                    #{ "table" => Table
+                     , "create" =>
+                         [#{ "name"  => integer_to_list(Day)
+                           , "from"  => to_postgres_date(Day)
+                           , "to"    => to_postgres_date(Day + Days)
+                           , "index" => Indices
+                           } || Day <- EnsureDays]
+                     , "delete" =>
+                         [#{ "name" => integer_to_list(Day)
+                           } || Day <- DeleteDays]
+                     }).
+
+%% @private Template for partition creation
+-spec part_template() -> binary().
+part_template() ->
+  <<"{{#create}}
+CREATE TABLE IF NOT EXISTS {{ table }}_{{ name }} PARTITION OF {{ table }}
+    FOR VALUES FROM ('{{ from }}') TO ('{{ to }}');
+{{#index}}
+CREATE INDEX IF NOT EXISTS {{ table }}_{{ name }}_{{ field }}_idx ON {{ table }}_{{ name }} ({{ field }});
+{{/index}}
+
+{{/create}}
+
+{{#delete}}
+DROP TABLE IF EXISTS {{ table }}_{{ name }};
+{{/delete}}
+">>.
+
+%% @private Render gregorian days as date
+-spec to_postgres_date(integer()) -> string().
+to_postgres_date(GDays) ->
+  {YY, MM, DD} = calendar:gregorian_days_to_date(GDays),
+  lists:flatten(io_lib:format("~w-~2..0w-~2..0w", [YY, MM, DD])).

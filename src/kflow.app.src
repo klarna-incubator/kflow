@@ -3,7 +3,7 @@
  , {vsn, "git"}
  , {registered, [kflow_sup2, kflow_pipe_sup]}
  , {applications, [kernel, stdlib, compiler, supervisor3, brod, prometheus, cowboy,
-                   jsone]}
+                   jsone, bbmustache]}
  , {modules, []}
  , {mod, {kflow_app, []}}
  , {licenses, ["Apache 2.0"]}
