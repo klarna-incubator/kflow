@@ -18,15 +18,28 @@ services:
       - POSTGRES_GRAFANA_PWD
       - PGDATA=/tmp/postgres
 
-  kafka_host:
-    image: docker.artifactory.klarna.net/kafka/kafka:2.2.1
+  zookeeper:
+    image: zmstone/kafka:2.2
+    command: run zookeeper
+    ports:
+      - 2181:2181
+
+  kafka_host_br:
+    image: zmstone/kafka:2.2
+    depends_on:
+      - zookeeper
     ports:
       - 9094:9094
       - 9093:9093
       - 9092:9092
       - 8081:8081
     environment:
-      KAFKA_CREATE_TOPICS: systom_monitor:5
+      TOPICS: "system_monitor:3,foo:1,bar:5"
+      BROKER_ID: 0
+      PLAINTEXT_PORT: 9092
+      SSL_PORT: 9093
+      SASL_SSL_PORT: 9094
+      ADVERTISED_HOSTNAME: localhost
 
   grafana:
     build: grafana

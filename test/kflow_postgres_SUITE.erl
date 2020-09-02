@@ -50,6 +50,17 @@ t_fail(_Config) when is_list(_Config) ->
   ?assertMatch({exit, _, _}, ?DO(kflow_postgres:map(_Offset = 42, Msg, State))),
   kflow_postgres:terminate(State).
 
+t_partitioning({pipe_config, _}) -> [];
+t_partitioning(_Config) when is_list(_Config) ->
+  Config = (config()) #{ table => "part_table"
+                       , partitioning =>
+                           #{ days         => 10
+                            , retention    => 10
+                            , index_fields => [ts]
+                            }
+                       },
+  kflow_postgres:ensure_partitions(Config).
+
 %%====================================================================
 %% Trace validation functions
 %%====================================================================

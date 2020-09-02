@@ -39,7 +39,7 @@ suite() -> [{timetrap, {seconds, 300}}].
 
 common_init_per_testcase(Case, Config) ->
   ok = application:set_env(kflow, s3_options, []),
-  ok = application:set_env(kflow, s3_headers, [{"Content-Type","text/xml"}]),
+  ok = application:set_env(kflow, s3_headers, []),
   meck:new(kflow_utils, [no_history, passthrough]),
   ok = meck:expect(kflow_utils, aws_config,
                    fun() ->

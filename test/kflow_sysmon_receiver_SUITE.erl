@@ -4,7 +4,6 @@
 -include_lib("kflow/src/testbed/kafka_ct_setup.hrl").
 -include_lib("snabbkaffe/include/ct_boilerplate.hrl").
 
-
 -compile(export_all).
 
 %%====================================================================

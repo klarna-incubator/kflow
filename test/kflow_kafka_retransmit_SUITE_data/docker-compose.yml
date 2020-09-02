@@ -6,10 +6,23 @@ networks:
       config:
         - subnet: 172.16.57.0/24
 services:
+  zookeeper:
+    image: zmstone/kafka:2.2
+    command: run zookeeper
+    ports:
+      - 2181:2181
   kafka_host_br:
-    image: docker.artifactory.klarna.net/kafka/kafka:2.2.1
+    image: zmstone/kafka:2.2
+    depends_on:
+      - zookeeper
     ports:
       - 9094:9094
       - 9093:9093
       - 9092:9092
       - 8081:8081
+    environment:
+      BROKER_ID: 0
+      PLAINTEXT_PORT: 9092
+      SSL_PORT: 9093
+      SASL_SSL_PORT: 9094
+      ADVERTISED_HOSTNAME: localhost

@@ -40,6 +40,21 @@
 %%% keys in the table. `kflow_postgres' will overwrite row with
 %%% colliding keys via upsert.</li></ul>
 %%%
+%%% == Automated partitioning ==
+%%%
+%%% This module can create table partitions automatically when
+%%% `partitioning` key is present in the kfnode configuration, and the
+%%% value is of type `part_config/0'. The following parameters can be
+%%% configured:
+%%%
+%%% <ul><li>`days' -- partition granularity interval in days</li>
+%%%
+%%% <li>`retention' -- how many old partition should be kept before
+%%% deletion</li>
+%%%
+%%% <li>`index_fields' -- (optional) also create indexes for
+%%% fields</li></ul>
+%%%
 %%% == Example usage ==
 %%%
 %%% ```
@@ -52,6 +67,7 @@
 %%%                        , table  => "foo_table"
 %%%                        , fields => [foo, bar, baz]
 %%%                        , keys   => [foo]
+%%%                        , partitioning => #{days => 10, retention => 3, index_fields => [bar]}
 %%%                        }}'''
 %%%
 %%% @end
@@ -68,7 +84,7 @@
         , map/3
         ]).
 
--export_type([config/0]).
+-export_type([config/0, part_config/0]).
 
 %% API:
 -export([ensure_partitions/1]).
