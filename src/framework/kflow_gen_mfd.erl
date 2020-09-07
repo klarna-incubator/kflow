@@ -72,8 +72,7 @@
 
 -callback init(_Config) -> _State.
 
--callback mfd(kflow:offset(), _DataIn, _State) ->
-  {true, _DataOut} | false.
+-callback mfd(kflow:offset(), _DataIn, _State) -> return_type().
 
 -callback terminate(_State) -> _.
 

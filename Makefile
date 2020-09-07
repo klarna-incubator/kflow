@@ -53,4 +53,4 @@ $(CONCUERROR):
 	$(MAKE) -C _build/Concuerror/
 
 hex-publish: clean
-	rebar3 hex publish
+	rebar3 as dev hex publish
