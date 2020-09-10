@@ -87,7 +87,7 @@ init(Config = #{topic := Topic}) ->
     }.
 
 %% @private
-map(Offset, Msg = #{partition := P, values := VV}, State) ->
+map(Offset, Msg = #{partition := P, value := Val}, State) ->
   #s{ client = Client
     , topic  = Topic
     } = State,
@@ -97,7 +97,7 @@ map(Offset, Msg = #{partition := P, values := VV}, State) ->
        , partition => P
        , offset    => Offset
        }),
-  case brod:produce_sync_offset(Client, Topic, P, <<>>, VV) of
+  case brod:produce_sync_offset(Client, Topic, P, <<>>, Val) of
     {ok, OutOffset} ->
       prometheus_gauge:set( <<"kflow_kafka_producer_offset">>
                           , [Topic, P]

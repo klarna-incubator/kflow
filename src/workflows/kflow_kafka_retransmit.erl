@@ -82,16 +82,9 @@ pipe_spec(Config) ->
   PartFun = maps:get(part_fun, Config, fun partition_by_key/2),
   BufferConfig = maps:with([max_size, max_messages], Config),
   Preprocess ++
-    [ %% First, choose what partition the message should end up in the downstream topic:
-      {map, ?MODULE,
-       {PartFun, NPartitions}}
-      %% Then separate messages by partition:
-    , {demux,
-       fun(_Offset, #{?out_part := P}) -> P end}
-      %% Group messages in chunks:
-    , {aggregate, kflow_group_kafka_messages,
-       BufferConfig}
-      %% And finally push chunks to another topic:
+    [ %% Choose what partition the message should end up in the downstream topic:
+      {map, ?MODULE, {PartFun, NPartitions}}
+      %% Push chunks to another topic:
     , {map, kflow_produce_to_kafka,
        #{ topic  => ToTopic
         , client => ToClient

@@ -11,6 +11,10 @@
 
 -include("kflow_int.hrl").
 
+-ifndef(TEST).
+-define(TEST, false).
+-endif.
+
 %% kflow_gen callbacks:
 -export([ init/2
         , handle_message/3
@@ -97,7 +101,8 @@ handle_message( Msg = #kflow_msg{ offset                 = Offset
                     , last_committed_offset  => LastCommittedOffset
                     , group_id               => GroupId
                     , route                  => Route
-                    })
+                    }),
+      ?TEST andalso error(offset_tracking_bug)
   end,
   {ok, [Msg], State#{last_committed_offset => SafeOffset}}.
 
