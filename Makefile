@@ -2,7 +2,7 @@ PICS=$(patsubst %.uml,%.png,$(wildcard doc/images/*.uml))
 
 ENV_FILE=.env
 
-MIN_COVERAGE := 80
+MIN_COVERAGE := 75
 BUILD_DIR := $(CURDIR)/_build
 CONCUERROR := $(BUILD_DIR)/Concuerror/bin/concuerror
 CONCUERROR_RUN := $(CONCUERROR) -x snabbkaffe_collector -x snabbkaffe -x snabbkaffe_nemesis -x snabbkaffe_sup \
